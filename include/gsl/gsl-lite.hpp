@@ -915,7 +915,7 @@ struct fail_fast : public std::logic_error
 
 namespace detail {
 
-gsl_api gsl_NORETURN inline void fail_fast_throw( char const * const message )
+gsl_api gsl_NORETURN inline void fail_fast_throw( char const * message )
 {
     throw fail_fast( message );
 }
