@@ -103,8 +103,8 @@
 
 // Configuration: Other
 
-#if defined( gsl_CONFIG_NOT_NULL_TRANSPARENT_GET ) && gsl_CONFIG_NOT_NULL_TRANSPARENT_GET && defined( gsl_CONFIG_NOT_NULL_GET_BY_CONST_REF )
-# error configuration option gsl_CONFIG_NOT_NULL_GET_BY_CONST_REF is meaningless if gsl_CONFIG_NOT_NULL_TRANSPARENT_GET=1
+#if defined( gsl_CONFIG_TRANSPARENT_NOT_NULL ) && gsl_CONFIG_TRANSPARENT_NOT_NULL && defined( gsl_CONFIG_NOT_NULL_GET_BY_CONST_REF )
+# error configuration option gsl_CONFIG_NOT_NULL_GET_BY_CONST_REF is meaningless if gsl_CONFIG_TRANSPARENT_NOT_NULL=1
 #endif
 
 #ifndef  gsl_CONFIG_DEPRECATE_TO_LEVEL
@@ -123,8 +123,8 @@
 # define gsl_CONFIG_NOT_NULL_GET_BY_CONST_REF  0
 #endif
 
-#ifndef  gsl_CONFIG_NOT_NULL_TRANSPARENT_GET
-# define gsl_CONFIG_NOT_NULL_TRANSPARENT_GET  0
+#ifndef  gsl_CONFIG_TRANSPARENT_NOT_NULL
+# define gsl_CONFIG_TRANSPARENT_NOT_NULL  0
 #endif
 
 #ifndef  gsl_CONFIG_CONFIRMS_COMPILATION_ERRORS
@@ -444,6 +444,13 @@
 
 // Other features:
 
+// Move if possible
+#if gsl_HAVE( RVALUE_REFERENCE )
+# define gsl_MOVE_(x) std::move( x )
+#else
+# define gsl_MOVE_(x) x
+#endif
+
 #define gsl_HAVE_CONSTRAINED_SPAN_CONTAINER_CTOR  \
     ( gsl_HAVE_DEFAULT_FUNCTION_TEMPLATE_ARG && gsl_HAVE_CONTAINER_DATA_METHOD )
 
@@ -476,10 +483,10 @@
 #endif
 
 #if gsl_HAVE( TYPE_TRAITS )
-# include <type_traits>     // for enable_if<>,
-                            // add_const<>, add_pointer<>, remove_cv<>, remove_const<>, remove_volatile<>, remove_reference<>, remove_cvref<>, remove_pointer<>, underlying_type<>,
-                            // is_assignable<>, is_constructible<>, is_const<>, is_convertible<>, is_integral<>, is_pointer<>, is_signed<>,
-                            // integral_constant<>, declval()
+# include <type_traits> // for enable_if<>,
+                        // add_const<>, add_pointer<>, remove_cv<>, remove_const<>, remove_volatile<>, remove_reference<>, remove_cvref<>, remove_pointer<>, underlying_type<>,
+                        // is_assignable<>, is_constructible<>, is_const<>, is_convertible<>, is_integral<>, is_pointer<>, is_signed<>,
+                        // integral_constant<>, declval()
 #elif gsl_HAVE( TR1_TYPE_TRAITS )
 # include <tr1/type_traits> // for add_const<>, remove_cv<>, remove_const<>, remove_volatile<>, remove_reference<>, integral_constant<>
 #endif
@@ -711,10 +718,6 @@ template< class T > struct remove_cvref { typedef typename std11::remove_cv< typ
 } // namespace std20
 
 namespace detail {
-
-/// for nsel_REQUIRES_T
-
-/*enum*/ class enabler{};
 
 #if gsl_HAVE( TYPE_TRAITS )
 
@@ -1542,13 +1545,104 @@ public:
     }
 #endif // gsl_HAVE( RVALUE_REFERENCE )
 
-#if gsl_CONFIG( NOT_NULL_TRANSPARENT_GET )
-    gsl_api gsl_constexpr14 element_type* get() const
+#if gsl_CONFIG( TRANSPARENT_NOT_NULL )
+    // In transparent mode we expose "forwarders" for typical member functions of smart pointers such
+    // as std::unique_ptr<> and std::shared_ptr<>. We use SFINAE to ensure the forwarders are defined only
+    // if the corresponding functions are defined on the underlying pointer.
+
+    // Returns the result of calling `get()` on the underlying pointer.
+    // For `std::unique_ptr<>` and `std::shared_ptr<>`, `get()` returns the raw pointer captured by the smart pointer.
+    //
+    // Expects that the `not_null<>` instance is valid.
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( element_type*, std::declval<U const>().get() )
+    get() const
     {
         Expects( ptr_ != gsl_nullptr );
         return ptr_.get();
     }
+
+    // Returns the result of calling `release()` on the underlying pointer.
+    //
+    // Expects that the `not_null<>` instance is valid.
+    // Ensures that the `not_null<>` instance is in moved-from state after returning.
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( element_type*, std::declval<U>().release() )
+    release() const gsl_noexcept
+    {
+        Expects( ptr_ != gsl_nullptr );
+        element_type* result = ptr_.release();
+        Ensures( ptr_ == gsl_nullptr );
+        return result;
+    }
+
+    // Returns the result of calling `reset()` on the underlying pointer.
+    //
+    // Expects that the `not_null<>` instance is valid.
+    // Ensures that the `not_null<>` instance is in moved-from state after returning.
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( void, std::declval<U>().reset() )
+    reset() gsl_noexcept
+    {
+        Expects( ptr_ != gsl_nullptr );
+        ptr_.reset();
+        Ensures( ptr_ == gsl_nullptr );
+    }
+
+    // Returns the result of calling `reset( p )` on the underlying pointer.
+    //
+    // Expects that the argument is not `nullptr`.
+    // Ensures that the `not_null<>` instance is valid after returning.
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( void, std::declval<U>().reset( std::declval<element_type*>() ) )
+    reset( element_type* p )
+    {
+        Expects( p != gsl_nullptr );
+        ptr_.reset( p );
+    }
+# if gsl_HAVE( NULLPTR )
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( void, std::declval<U>().reset( gsl_nullptr ) )
+    reset( std::nullptr_t ) gsl_is_delete;
+# endif
+
+    // Returns the result of calling `reset( p, d )` on the underlying pointer.
+    //
+    // Expects that the argument is not `nullptr`.
+    // Ensures that the `not_null<>` instance is valid after returning.
+    template< class Deleter, class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( void, std::declval<U>().reset( std::declval<element_type*>(), std::declval<Deleter>() ) )
+    reset( element_type* p, Deleter d )
+    {
+        Expects( p != gsl_nullptr );
+        ptr_.reset( p, gsl_MOVE_( d ) );
+    }
+
+    // Returns the result of calling `reset( p, d, a )` on the underlying pointer.
+    //
+    // Expects that the argument is not `nullptr`.
+    // Ensures that the `not_null<>` instance is valid after returning.
+    template< class Deleter, class Alloc, class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( void, std::declval<U>().reset( std::declval<element_type*>(), std::declval<Deleter>(), std::declval<Alloc>() ) )
+    reset( element_type* p, Deleter d, Alloc a )
+    {
+        Expects( p != gsl_nullptr );
+        ptr_.reset( p, gsl_MOVE_( d ), gsl_MOVE_( a ) );
+    }
+
+    // Returns the result of calling `operator[]( i )` on the underlying pointer.
+    //
+    // Expects that the argument is not `nullptr`.
+    template< class U = T >
+    gsl_api gsl_constexpr14 gsl_DECLTYPE_( element_type &, std::declval<U const>()[std::declval<std::ptrdiff_t>()] )
+    operator []( std::ptrdiff_t i ) const
+    {
+        Expects( p != gsl_nullptr );
+        return p[i];
+    }
+
 #else
+    // Legacy version of `get()` which returns underlying pointer
 # if gsl_CONFIG( NOT_NULL_GET_BY_CONST_REF )
     gsl_api gsl_constexpr14 T const & get() const
     {
@@ -1562,6 +1656,9 @@ public:
         return ptr_;
     }
 # endif
+
+    // Delete subscript operator in legacy non-transparent mode:
+    gsl_api void operator[]( std::ptrdiff_t ) const gsl_is_delete;
 #endif
 
     // We want an implicit conversion operator that can be used to convert from both lvalues (by
@@ -1676,7 +1773,7 @@ gsl_is_delete_access:
     gsl_api not_null & operator=( int ) gsl_is_delete;
 #endif
 
-    // unwanted operators...pointers only point to single objects!
+    // unwanted operators:
     gsl_api not_null & operator++() gsl_is_delete;
     gsl_api not_null & operator--() gsl_is_delete;
     gsl_api not_null   operator++( int ) gsl_is_delete;
@@ -1687,7 +1784,6 @@ gsl_is_delete_access:
     gsl_api not_null & operator-=( size_t ) gsl_is_delete;
     gsl_api not_null & operator+=( std::ptrdiff_t ) gsl_is_delete;
     gsl_api not_null & operator-=( std::ptrdiff_t ) gsl_is_delete;
-    gsl_api void       operator[]( std::ptrdiff_t ) const gsl_is_delete;
 
 private:
     T ptr_;
