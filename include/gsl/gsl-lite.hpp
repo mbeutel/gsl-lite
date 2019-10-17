@@ -792,13 +792,13 @@ struct is_compatible_container : std17::bool_constant
 
 template<
     class C, class E
-        , typename std::enable_if<
+        , typename = typename std::enable_if<
             ! is_span< C >::value
             && ! is_array< C >::value
             && ! is_std_array< C >::value
             && ( std::is_convertible< typename std::remove_pointer<decltype( std17::data( std::declval<C&>() ) )>::type(*)[], E(*)[] >::value)
         //  &&   has_size_and_data< C >::value
-        >
+        >::type
         , class = decltype( std17::size(std::declval<C>()) )
         , class = decltype( std17::data(std::declval<C>()) )
 >
@@ -1543,7 +1543,11 @@ public:
 #endif // gsl_HAVE( RVALUE_REFERENCE )
 
 #if gsl_CONFIG( NOT_NULL_TRANSPARENT_GET )
-    gsl_api gsl_constexpr14 element_type* get() const { return checked_ptr().get(); }
+    gsl_api gsl_constexpr14 element_type* get() const
+    {
+        Expects( ptr_ != gsl_nullptr );
+        return ptr_.get();
+    }
 #else
 # if gsl_CONFIG( NOT_NULL_GET_BY_CONST_REF )
     gsl_api gsl_constexpr14 T const & get() const
@@ -2289,7 +2293,7 @@ public:
 #endif
 
     template< class U
-        , typename std::enable_if< std::is_convertible<U(*)[], element_type(*)[]>::value, int >::type = 0
+        gsl_REQUIRES_A_(( std::is_convertible<U(*)[], element_type(*)[]>::value ))
     >
     gsl_api gsl_constexpr span( span<U> const & other )
         : first_( other.begin() )
