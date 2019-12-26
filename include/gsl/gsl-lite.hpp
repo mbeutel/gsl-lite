@@ -2313,32 +2313,32 @@ template< class IntegerType  gsl_REQUIRES_A_(( std::is_integral<IntegerType>::va
 gsl_api inline gsl_constexpr14 byte & operator<<=( byte & b, IntegerType shift ) gsl_noexcept
 {
 #if gsl_HAVE( ENUM_CLASS_CONSTRUCTION_FROM_UNDERLYING_TYPE )
-    return b = to_byte( to_uchar( b ) << shift );
+    return b = gsl::to_byte( gsl::to_uchar( b ) << shift );
 #else
-    b.v = to_uchar( b.v << shift ); return b;
+    b.v = gsl::to_uchar( b.v << shift ); return b;
 #endif
 }
 
 template< class IntegerType  gsl_REQUIRES_A_(( std::is_integral<IntegerType>::value )) >
 gsl_api inline gsl_constexpr byte operator<<( byte b, IntegerType shift ) gsl_noexcept
 {
-    return to_byte( to_uchar( b ) << shift );
+    return gsl::to_byte( gsl::to_uchar( b ) << shift );
 }
 
 template< class IntegerType  gsl_REQUIRES_A_(( std::is_integral<IntegerType>::value )) >
 gsl_api inline gsl_constexpr14 byte & operator>>=( byte & b, IntegerType shift ) gsl_noexcept
 {
 #if gsl_HAVE( ENUM_CLASS_CONSTRUCTION_FROM_UNDERLYING_TYPE )
-    return b = to_byte( to_uchar( b ) >> shift );
+    return b = gsl::to_byte( gsl::to_uchar( b ) >> shift );
 #else
-    b.v = to_uchar( b.v >> shift ); return b;
+    b.v = gsl::to_uchar( b.v >> shift ); return b;
 #endif
 }
 
 template< class IntegerType  gsl_REQUIRES_A_(( std::is_integral<IntegerType>::value )) >
 gsl_api inline gsl_constexpr byte operator>>( byte b, IntegerType shift ) gsl_noexcept
 {
-    return to_byte( to_uchar( b ) >> shift );
+    return gsl::to_byte( gsl::to_uchar( b ) >> shift );
 }
 
 #if gsl_HAVE( ENUM_CLASS_CONSTRUCTION_FROM_UNDERLYING_TYPE )
@@ -2382,7 +2382,7 @@ gsl_api inline gsl_constexpr14 byte & operator|=( byte & l, byte r ) gsl_noexcep
 
 gsl_api inline gsl_constexpr byte operator|( byte l, byte r ) gsl_noexcept
 {
-    return byte{ l.v | r.v };
+    return gsl::to_byte( l.v | r.v );
 }
 
 gsl_api inline gsl_constexpr14 byte & operator&=( byte & l, byte r ) gsl_noexcept
@@ -2392,7 +2392,7 @@ gsl_api inline gsl_constexpr14 byte & operator&=( byte & l, byte r ) gsl_noexcep
 
 gsl_api inline gsl_constexpr byte operator&( byte l, byte r ) gsl_noexcept
 {
-    return byte{ l.v & r.v };
+    return gsl::to_byte( l.v & r.v );
 }
 
 gsl_api inline gsl_constexpr14 byte & operator^=( byte & l, byte r ) gsl_noexcept
@@ -2402,12 +2402,12 @@ gsl_api inline gsl_constexpr14 byte & operator^=( byte & l, byte r ) gsl_noexcep
 
 gsl_api inline gsl_constexpr byte operator^( byte l, byte r ) gsl_noexcept
 {
-    return byte{ l.v ^ r.v };
+    return gsl::to_byte( l.v ^ r.v );
 }
 
 gsl_api inline gsl_constexpr byte operator~( byte b ) gsl_noexcept
 {
-    return byte{ ~b.v };
+    return gsl::to_byte( ~b.v );
 }
 #endif // gsl_HAVE( ENUM_CLASS_CONSTRUCTION_FROM_UNDERLYING_TYPE )
 
