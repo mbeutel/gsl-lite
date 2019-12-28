@@ -915,7 +915,7 @@ namespace std20 {
 struct identity
 {
     template < class T >
-    gsl_constexpr auto operator ()( T && arg ) const noexcept
+    gsl_constexpr auto operator ()( T && arg ) const gsl_noexcept
         -> decltype( std::forward<T>( arg ) )
     {
         return std::forward<T>( arg );
@@ -927,7 +927,7 @@ struct identity
 template< class T >
 struct type_identity
 {
-    using type = T;
+    typedef T type;
 };
 #if gsl_HAVE( ALIAS_TEMPLATE )
 template< class T >
