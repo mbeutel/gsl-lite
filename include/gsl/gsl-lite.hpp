@@ -121,6 +121,7 @@
 
 #ifndef  gsl_CONFIG_INDEX_TYPE
 # if gsl_CONFIG_DEFAULTS_VERSION >= 1
+// p0122r3 uses std::ptrdiff_t
 #  define gsl_CONFIG_INDEX_TYPE  std::ptrdiff_t
 # else
 #  define gsl_CONFIG_INDEX_TYPE  gsl_CONFIG_SPAN_INDEX_TYPE
@@ -1071,8 +1072,8 @@ struct is_compatible_container : std::true_type{};
 // GSL.util: utilities
 //
 
-// index type for all container indexes/subscripts/sizes
-typedef gsl_CONFIG_INDEX_TYPE index;   // p0122r3 uses std::ptrdiff_t
+// Integer type for indices (e.g. in a loop).
+typedef gsl_CONFIG_INDEX_TYPE index;
 
 //
 // GSL.owner: ownership pointers
@@ -1601,21 +1602,21 @@ gsl_api inline T narrow( U u )
 template< class T, size_t N >
 gsl_api inline gsl_constexpr14 T & at( T(&arr)[N], size_t pos )
 {
-    Expects( pos < N );
+    gsl_Expects( pos < N );
     return arr[pos];
 }
 
 template< class Container >
 gsl_api inline gsl_constexpr14 typename Container::value_type & at( Container & cont, size_t pos )
 {
-    Expects( pos < cont.size() );
+    gsl_Expects( pos < cont.size() );
     return cont[pos];
 }
 
 template< class Container >
 gsl_api inline gsl_constexpr14 typename Container::value_type const & at( Container const & cont, size_t pos )
 {
-    Expects( pos < cont.size() );
+    gsl_Expects( pos < cont.size() );
     return cont[pos];
 }
 
@@ -1624,7 +1625,7 @@ gsl_api inline gsl_constexpr14 typename Container::value_type const & at( Contai
 template< class T >
 gsl_api inline const gsl_constexpr14 T at( std::initializer_list<T> cont, size_t pos )
 {
-    Expects( pos < cont.size() );
+    gsl_Expects( pos < cont.size() );
     return *( cont.begin() + pos );
 }
 #endif
@@ -1741,11 +1742,11 @@ struct not_null_data< T, true >
     gsl_constexpr14 not_null_data( not_null_data const & other )
     : ptr_( other.ptr_ )
     {
-        Expects( ptr_ != gsl_nullptr );
+        gsl_Expects( ptr_ != gsl_nullptr );
     }
     gsl_constexpr14 not_null_data & operator=( not_null_data const & other )
     {
-        Expects( other.ptr_ != gsl_nullptr );
+        gsl_Expects( other.ptr_ != gsl_nullptr );
         ptr_ = other.ptr_;
         return *this;
     }
@@ -1800,14 +1801,14 @@ public:
     gsl_api gsl_constexpr14 explicit not_null( U other )
     : data_( T( std::move( other ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 # else // a.k.a. !gsl_HAVE( RVALUE_REFERENCE )
     template< class U >
     gsl_api gsl_constexpr14 explicit not_null( U const& other )
     : data_( T( other ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 # endif // gsl_HAVE( RVALUE_REFERENCE )
 #else // a.k.a. !gsl_CONFIG( NOT_NULL_EXPLICIT_CTOR )
@@ -1822,7 +1823,7 @@ public:
     gsl_api gsl_constexpr14 explicit not_null( U other )
     : data_( T( std::move( other ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 
     template< class U
@@ -1831,7 +1832,7 @@ public:
     gsl_api gsl_constexpr14 not_null( U other )
     : data_( T( std::move( other ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 #  else // a.k.a. !( gsl_HAVE( TYPE_TRAITS ) && gsl_HAVE( DEFAULT_FUNCTION_TEMPLATE_ARG ) && !gsl_BETWEEN( gsl_COMPILER_CLANG_VERSION, 1, 400 ) && !gsl_BETWEEN( gsl_COMPILER_APPLECLANG_VERSION, 1, 1001 )
     // If type_traits are not available, then we can't distinguish `is_convertible<>` and `is_constructible<>`, so we unconditionally permit implicit construction.
@@ -1839,7 +1840,7 @@ public:
     gsl_api gsl_constexpr14 not_null( U other )
     : data_( T( std::move( other ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 #  endif // gsl_HAVE( TYPE_TRAITS ) && gsl_HAVE( DEFAULT_FUNCTION_TEMPLATE_ARG ) && !gsl_BETWEEN( gsl_COMPILER_CLANG_VERSION, 1, 400 ) && !gsl_BETWEEN( gsl_COMPILER_APPLECLANG_VERSION, 1, 1001 )
 # else // a.k.a. !gsl_HAVE( RVALUE_REFERENCE )
@@ -1847,7 +1848,7 @@ public:
     gsl_api gsl_constexpr14 not_null( U const& other )
     : data_( T( other ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 # endif // gsl_HAVE( RVALUE_REFERENCE )
 #endif // gsl_CONFIG( NOT_NULL_EXPLICIT_CTOR )
@@ -1863,7 +1864,7 @@ public:
     gsl_api gsl_constexpr14 explicit not_null( not_null<U> other )
     : data_( T( std::move( other.data_.ptr_ ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 
     template< class U
@@ -1872,7 +1873,7 @@ public:
     gsl_api gsl_constexpr14 not_null( not_null<U> other )
     : data_( T( std::move( other.data_.ptr_ ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
 #  else // a.k.a. !( gsl_HAVE( TYPE_TRAITS ) && gsl_HAVE( DEFAULT_FUNCTION_TEMPLATE_ARG ) && !gsl_BETWEEN( gsl_COMPILER_CLANG_VERSION, 1, 400 ) && !gsl_BETWEEN( gsl_COMPILER_APPLECLANG_VERSION, 1, 1001 )
     // If type_traits are not available, then we can't distinguish `is_convertible<>` and `is_constructible<>`, so we unconditionally permit implicit construction.
@@ -1880,12 +1881,12 @@ public:
     gsl_api gsl_constexpr14 not_null( not_null<U> other )
     : data_( T( std::move( other.data_.ptr_ ) ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
     template< class U >
     gsl_api gsl_constexpr14 not_null<T>& operator=( not_null<U> other )
     {
-        Expects( other.data_.ptr_ != gsl_nullptr );
+        gsl_Expects( other.data_.ptr_ != gsl_nullptr );
         data_.ptr_ = std::move( other.data_.ptr_ );
         return *this;
     }
@@ -1895,12 +1896,12 @@ public:
     gsl_api gsl_constexpr14 not_null( not_null<U> const& other )
     : data_( T( other.data_.ptr_ ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
     template< class U >
     gsl_api gsl_constexpr14 not_null<T>& operator=( not_null<U> const & other )
     {
-        Expects( other.data_.ptr_ != gsl_nullptr );
+        gsl_Expects( other.data_.ptr_ != gsl_nullptr );
         data_.ptr_ = other.data_.ptr_;
         return *this;
     }
@@ -1909,20 +1910,20 @@ public:
 #if gsl_CONFIG( TRANSPARENT_NOT_NULL )
     gsl_api gsl_constexpr14 element_type* get() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_.get();
     }
 #else
 # if gsl_CONFIG( NOT_NULL_GET_BY_CONST_REF )
     gsl_api gsl_constexpr14 T const & get() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_;
     }
 # else
     gsl_api gsl_constexpr14 T get() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_;
     }
 # endif
@@ -1969,7 +1970,7 @@ public:
     &
 # endif
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return U( data_.ptr_ );
     }
 # if gsl_HAVE( FUNCTION_REF_QUALIFIER )
@@ -1978,7 +1979,7 @@ public:
     >
     gsl_api gsl_constexpr14 explicit operator U() &&
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return U( std::move( data_.ptr_ ) );
     }
 # endif
@@ -1993,7 +1994,7 @@ public:
     &
 # endif
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_;
     }
 # if gsl_HAVE( FUNCTION_REF_QUALIFIER )
@@ -2002,7 +2003,7 @@ public:
     >
     gsl_api gsl_constexpr14 operator U() &&
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return std::move( data_.ptr_ );
     }
 # endif
@@ -2011,7 +2012,7 @@ public:
     gsl_api gsl_constexpr14
     operator U() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_;
     }
 #endif // gsl_HAVE( RVALUE_REFERENCE ) && gsl_HAVE( TYPE_TRAITS ) && gsl_HAVE( DEFAULT_FUNCTION_TEMPLATE_ARG ) && gsl_HAVE( EXPLICIT )
@@ -2019,14 +2020,14 @@ public:
     gsl_api gsl_constexpr14 T const &
     operator->() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return data_.ptr_;
     }
 
     gsl_api gsl_constexpr14 element_type &
     operator*() const
     {
-        Ensures( data_.ptr_ != gsl_nullptr );
+        gsl_Ensures( data_.ptr_ != gsl_nullptr );
         return *data_.ptr_;
     }
 
@@ -2035,11 +2036,11 @@ public:
     gsl_constexpr14 not_null( not_null && other ) gsl_noexcept
     : data_( std::move( other.data_ ) )
     {
-        Expects( data_.ptr_ != gsl_nullptr );
+        gsl_Expects( data_.ptr_ != gsl_nullptr );
     }
     gsl_constexpr14 not_null & operator=( not_null && other ) gsl_noexcept
     {
-        Expects( other.data_.ptr_ != gsl_nullptr );
+        gsl_Expects( other.data_.ptr_ != gsl_nullptr );
         data_ = std::move( other.data_ );
         return *this;
     }
@@ -2462,7 +2463,7 @@ public:
         : first_( nullptr )
         , last_ ( nullptr )
     {
-        Expects( size_in == 0 );
+        gsl_Expects( size_in == 0 );
     }
 #endif
 
@@ -2480,14 +2481,14 @@ public:
         : first_( data_in )
         , last_ ( data_in + size_in )
     {
-        Expects( size_in == 0 || ( size_in > 0 && data_in != gsl_nullptr ) );
+        gsl_Expects( size_in == 0 || ( size_in > 0 && data_in != gsl_nullptr ) );
     }
 
     gsl_api gsl_constexpr14 span( pointer first_in, pointer last_in )
         : first_( first_in )
         , last_ ( last_in )
     {
-        Expects( first_in <= last_in );
+        gsl_Expects( first_in <= last_in );
     }
 
 #if ! gsl_DEPRECATE_TO_LEVEL( 5 )
@@ -2497,7 +2498,7 @@ public:
         : first_( data_in )
         , last_ ( data_in + size_in )
     {
-        Expects( size_in == 0 || ( size_in > 0 && data_in != gsl_nullptr ) );
+        gsl_Expects( size_in == 0 || ( size_in > 0 && data_in != gsl_nullptr ) );
     }
 
 #endif // deprecate
@@ -2681,25 +2682,25 @@ public:
 
     gsl_api gsl_constexpr14 span first( index_type count ) const
     {
-        Expects( 0 <= count && count <= this->size() );
+        gsl_Expects( 0 <= count && count <= this->size() );
         return span( this->data(), count );
     }
 
     gsl_api gsl_constexpr14 span last( index_type count ) const
     {
-        Expects( 0 <= count && count <= this->size() );
+        gsl_Expects( 0 <= count && count <= this->size() );
         return span( this->data() + this->size() - count, count );
     }
 
     gsl_api gsl_constexpr14 span subspan( index_type offset ) const
     {
-        Expects( 0 <= offset && offset <= this->size() );
+        gsl_Expects( 0 <= offset && offset <= this->size() );
         return span( this->data() + offset, this->size() - offset );
     }
 
     gsl_api gsl_constexpr14 span subspan( index_type offset, index_type count ) const
     {
-        Expects(
+        gsl_Expects(
             0 <= offset && offset <= this->size() &&
             0 <= count  && count <= this->size() - offset );
         return span( this->data() + offset, count );
@@ -2741,7 +2742,7 @@ public:
 
     gsl_api gsl_constexpr14 reference at( index_type pos ) const
     {
-       Expects( pos < size() );
+       gsl_Expects( pos < size() );
        return first_[ pos ];
     }
 
@@ -2841,7 +2842,7 @@ public:
     template< class U >
     gsl_api span< U > as_span() const
     {
-        Expects( ( this->size_bytes() % sizeof(U) ) == 0 );
+        gsl_Expects( ( this->size_bytes() % sizeof(U) ) == 0 );
         return span< U >( reinterpret_cast<U *>( this->data() ), this->size_bytes() / sizeof( U ) ); // NOLINT
     }
 
@@ -2969,7 +2970,7 @@ gsl_api inline void copy( span<T> src, span<U> dest )
 #if gsl_CPP14_OR_GREATER // gsl_HAVE( TYPE_TRAITS ) (circumvent Travis clang 3.4)
     static_assert( std::is_assignable<U &, T const &>::value, "Cannot assign elements of source span to elements of destination span" );
 #endif
-    Expects( dest.size() >= src.size() );
+    gsl_Expects( dest.size() >= src.size() );
     detail::copy_n( src.data(), src.size(), dest.data() );
 }
 
@@ -3747,7 +3748,7 @@ gsl_api static span<T> ensure_sentinel( T * seq, SizeType max = (std::numeric_li
     while ( static_cast<SizeType>( cur - seq ) < max && *cur != Sentinel )
         ++cur;
 
-    Expects( *cur == Sentinel );
+    gsl_Expects( *cur == Sentinel );
 
     return span<T>( seq, narrow_cast< typename span<T>::index_type >( cur - seq ) );
 }
@@ -3802,7 +3803,7 @@ public:
         : span_( s )
     {
         // expects a zero-terminated span
-        Expects( s[s.size() - 1] == '\0');
+        gsl_Expects( s[s.size() - 1] == '\0');
     }
 
 #if gsl_HAVE( IS_DEFAULT )
@@ -3884,15 +3885,15 @@ public:
 //     #include <gsl-lite/gsl-lite.hpp> // instead of <gsl/gsl-lite.hpp>
 //
 //     namespace foo {
-//     namespace gsl = ::gsl_lite; // convenience alias
-//     double mean(gsl::span<double const> elements) {
-//         gsl_Expects(!elements.empty()); // instead of Expects()
-//         ...
-//     }
+//         namespace gsl = ::gsl_lite; // convenience alias
+//         double mean(gsl::span<double const> elements) {
+//             gsl_Expects(!elements.empty()); // instead of Expects()
+//             ...
+//         }
 //     } // namespace foo
 //
 // In a future version, the new <gsl-lite/gsl-lite.hpp> header will only define the `gsl_lite` namespace and no
-// unprefixed `Expects()` and `Ensures()` macros to avoid collision with M-GSL. To ensure backwards compatibility, the
+// unprefixed `gsl_Expects()` and `gsl_Ensures()` macros to avoid collision with M-GSL. To ensure backward compatibility, the
 // old header <gsl/gsl-lite.hpp> will keep defining the `gsl` namespace and the `Expects()` and `Ensures()` macros.
 
 namespace gsl_lite
@@ -3915,8 +3916,14 @@ using std::make_shared;
 #endif
 
 using ::gsl::index;
+
+// Integer type for dimensions.
 typedef gsl_CONFIG_INDEX_TYPE dim;
+
+// Integer type for array strides.
 typedef gsl_CONFIG_INDEX_TYPE stride;
+
+// Integer type for pointer, iterator, or index differences.
 typedef gsl_CONFIG_INDEX_TYPE diff;
 
 #if  gsl_HAVE( ALIAS_TEMPLATE )
@@ -3948,8 +3955,6 @@ using ::gsl::with_container;
 using ::gsl::span;
 using ::gsl::make_span;
 using ::gsl::byte_span;
-using ::gsl::size;
-using ::gsl::ssize;
 using ::gsl::copy;
 using ::gsl::as_bytes;
 using ::gsl::as_writeable_bytes;
