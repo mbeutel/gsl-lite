@@ -3084,6 +3084,19 @@ gsl_NODISCARD gsl_api gsl_constexpr T* as_nullable( not_null<T*> p ) gsl_noexcep
 
 using namespace detail::no_adl;
 
+template< class T >
+gsl_api gsl_constexpr14 void
+assert_not_null( T const & p )
+{
+    gsl_Assert( p != nullptr );
+}
+template< class T >
+gsl_api gsl_constexpr14 void
+assert_not_null( gsl::not_null<T> const & p )
+{
+    (void) p.operator->();  // comprises not-null check if necessary
+}
+
 // not_null with implicit constructor, allowing copy-initialization:
 
 template< class T >
@@ -5193,6 +5206,7 @@ using ::gsl::at;
 using ::gsl::not_null;
 using ::gsl::not_null_ic;
 using ::gsl::make_not_null;
+using ::gsl::assert_not_null;
 
 using ::gsl::byte;
 
