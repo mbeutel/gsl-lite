@@ -22,6 +22,7 @@
 #define GSL_LITE_GSL_LITE_HPP_INCLUDED
 
 #include <exception> // for exception, terminate(), uncaught_exceptions()
+#include <iterator>  // for reverse_iterator<>, forward_iterator_tag
 #include <limits>
 #include <memory>    // for addressof(), unique_ptr<>, shared_ptr<>
 #include <iosfwd>    // for basic_ostream<>
@@ -1380,10 +1381,6 @@
 # include <array> // indirectly includes reverse_iterator<>
 #endif
 
-#if ! gsl_HAVE( ARRAY )
-# include <iterator> // for reverse_iterator<>
-#endif
-
 #ifdef __cpp_lib_three_way_comparison
 # include <compare>
 #endif
@@ -1925,6 +1922,10 @@ struct is_char<char16_t> : std11::true_type{};
 template<>
 struct is_char<char32_t> : std11::true_type{};
 #endif
+template< class T >
+struct is_zstring : std11::false_type{};
+template< class C >
+struct is_zstring< C const * > : is_char<C>{};
 template< class T, class C >
 struct is_czstring_of : std11::false_type{};
 template< class C >
@@ -3384,18 +3385,59 @@ template< class T >
 struct not_null_accessor;
 
 #if gsl_BASELINE_CPP20_
-template< class T, bool HasElementType = has_element_type<T>::value >
-struct not_null_base
+template< class T, bool HasElementType = has_element_type<T>::value, bool IsZString = is_zstring< T >::value >
+struct not_null_base;
+template< class T >
+struct not_null_base< T, true, true >
+{
+    using element_type = element_type_t<T>;
+    
+    using iterator_category = std::forward_iterator_tag;
+    using iterator_concept = iterator_category;
+    using difference_type = std::ptrdiff_t;
+    using value_type = element_type;
+};
+template< class T >
+struct not_null_base< T , true, false >
 {
     using element_type = element_type_t<T>;
 };
 template< class T >
-struct not_null_base< T, false >
+struct not_null_base< T, false, false >
 {
 };
 #else // ! gsl_BASELINE_CPP20_
-template< class T, class Derived, bool HasElementType = has_element_type< T >::value >
-struct not_null_elem
+template< class T, class Derived, bool HasElementType = has_element_type< T >::value, bool IsZString = is_zstring< T >::value >
+struct not_null_elem;
+template< class T, class Derived >
+struct not_null_elem< T, Derived, true, true >
+{
+    typedef typename element_type_helper<T>::type element_type;
+
+    typedef std::forward_iterator_tag iterator_category;
+    typedef iterator_category iterator_concept;
+    typedef std::ptrdiff_t difference_type;
+    typedef element_type value_type;
+
+    // We explicitly forbid pointer arithmetic because the Core Guidelines require that pointers only point to single objects.
+    // However, we make a little exception for not-null zero-terminated strings. Incrementing is the only pointer operation
+    // we can safely allow for zstrings. We also require that the pointer not be incremented past the terminating 0.
+    gsl_constexpr14 Derived & operator++()
+    {
+        T & ptrRef = not_null_accessor<T>::get_ref( static_cast< Derived & >( *this ) );
+        gsl_Assert( *ptrRef != '\0' );
+        ++ptrRef;
+        return static_cast< Derived & >( *this );
+    }
+    gsl_constexpr14 Derived operator++( int )
+    {
+        Derived result = static_cast< Derived & >( *this );
+        ++*this;
+        return result;
+    }
+};
+template< class T, class Derived >
+struct not_null_elem< T, Derived, true, false >
 {
     typedef typename element_type_helper<T>::type element_type;
 
@@ -3406,10 +3448,15 @@ struct not_null_elem
         return not_null_accessor<T>::get_checked( static_cast< Derived const & >( *this ) ).get();
     }
 #endif // gsl_CONFIG( TRANSPARENT_NOT_NULL )
+
+    Derived & operator++() gsl_is_delete;
+    Derived   operator++( int ) gsl_is_delete;
 };
 template< class T, class Derived >
-struct not_null_elem< T, Derived, false >
+struct not_null_elem< T, Derived, false, false >
 {
+    Derived & operator++() gsl_is_delete;
+    Derived   operator++( int ) gsl_is_delete;
 };
 template< class T, class Derived = not_null<T>, bool IsDereferencable = is_dereferencable< T >::value >
 struct gsl_EMPTY_BASES_ not_null_base
@@ -4172,11 +4219,26 @@ gsl_is_delete_access:
     }
 #endif
 
-    // unwanted operators...pointers only point to single objects!
-    // TODO: revise for not_null<czstring> and the like?
-    not_null & operator++() gsl_is_delete;
+    // We explicitly forbid pointer arithmetic because the Core Guidelines require that pointers only point to single objects.
+    // However, we make a little exception for not-null zero-terminated strings. Incrementing is the only pointer operation
+    // we can safely allow for zstrings. We also require that the pointer not be incremented past the terminating 0.
+#if gsl_BASELINE_CPP20_
+    constexpr not_null & operator++()
+    requires detail::is_zstring<T>::value
+    {
+        gsl_Assert( *ptr_ != '\0' );
+        ++ptr_;
+        return *this;
+    }
+    constexpr not_null operator++( int )
+    requires detail::is_zstring<T>::value
+    {
+        auto result = *this;
+        ++*this;
+        return result;
+    }
+#endif // gsl_BASELINE_CPP20_
     not_null & operator--() gsl_is_delete;
-    not_null   operator++( int ) gsl_is_delete;
     not_null   operator--( int ) gsl_is_delete;
     not_null & operator+ ( size_t ) gsl_is_delete;
     not_null & operator+=( size_t ) gsl_is_delete;
@@ -4292,6 +4354,10 @@ struct not_null_accessor
 template< class T >
 struct not_null_accessor< T * >
 {
+    static gsl_api T * & get_ref( not_null< T * > & p ) gsl_noexcept
+    {
+        return p.data_.ptr_;
+    }
     static gsl_api T * const & get( not_null< T * > const & p ) gsl_noexcept
     {
         return p.data_.ptr_;
